@@ -4,7 +4,7 @@ Bicep implementation of the Azure Virtual WAN any-to-any routing lab. It deploys
 
 ## Architecture
 
-![Azure Virtual WAN any-to-any lab architecture](assets/networkdiagram.png)
+![Azure Virtual WAN any-to-any lab architecture](assets/networkdiagram.svg)
 
 Hub 1, Branch 1, and Spokes 1-3 deploy to the first supplied region. Hub 2, Branch 2, and Spokes 4-6 deploy to the second supplied region. All VMs default to `Standard_D2ls_v7`; branch gateways use `VpnGw1AZ` with zonal Standard public IPs.
 

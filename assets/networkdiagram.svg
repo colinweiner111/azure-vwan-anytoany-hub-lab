@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">Azure Virtual WAN any-to-any lab architecture</title>
+  <desc id="description">Two Azure Virtual WAN hubs provide inter-hub transit for six spoke virtual networks and two BGP-enabled VPN branches. Each hub connects three local spokes and one local branch.</desc>
+  <defs>
+    <symbol id="vnet-icon" viewBox="0 0 32 24">
+      <path d="M2 12 9 5l7 7-7 7Z" fill="none" stroke="#19bfee" stroke-width="2"/>
+      <path d="m16 12 7-7 7 7-7 7Z" fill="none" stroke="#19bfee" stroke-width="2"/>
+      <circle cx="13" cy="12" r="2.2" fill="#80d441"/>
+      <circle cx="19" cy="12" r="2.2" fill="#80d441"/>
+    </symbol>
+    <symbol id="vm-icon" viewBox="0 0 32 32">
+      <circle cx="16" cy="7" r="5" fill="#00a4ef"/>
+      <path d="M8 28v-9c0-5 3-8 8-8s8 3 8 8v9Z" fill="#28c4ef"/>
+      <path d="M5 3h5M7.5.5v5M22 3h5M24.5.5v5" stroke="#0078d4" stroke-width="2"/>
+    </symbol>
+    <symbol id="hub-icon" viewBox="0 0 120 110">
+      <path d="M31 59c-14 0-25-10-25-23 0-11 8-20 19-22C30 4 40 0 51 4c8-5 19-4 27 2 8 6 11 14 10 23 13 1 23 11 23 24 0 14-12 25-27 25H31Z" fill="#2dc5e8"/>
+      <circle cx="62" cy="70" r="28" fill="#fff" stroke="#0078d4" stroke-width="5"/>
+      <path d="M34 70h56M62 42c-10 9-14 18-14 28s4 19 14 28M62 42c10 9 14 18 14 28s-4 19-14 28M38 56h48M38 84h48" fill="none" stroke="#0078d4" stroke-width="3"/>
+      <path d="M15 55c9 4 14 9 16 18M103 51c-9 5-14 10-16 19" fill="none" stroke="#8064a2" stroke-width="5"/>
+    </symbol>
+    <style>
+      text { font-family: Calibri, Arial, sans-serif; fill: #111; }
+      .title { font-size: 28px; font-weight: 600; text-anchor: middle; }
+      .subtitle { font-size: 16px; fill: #605e5c; text-anchor: middle; }
+      .region { font-size: 18px; font-weight: 600; fill: #0078d4; text-anchor: middle; }
+      .box { stroke-width: 1.5; stroke-dasharray: 5 4; }
+      .spoke { fill: #dbe9fb; stroke: #5b9bd5; }
+      .branch { fill: #f2f2f2; stroke: #666; }
+      .name { font-size: 18px; font-weight: 600; text-anchor: middle; }
+      .detail { font-size: 16px; text-anchor: middle; }
+      .vm { font-size: 16px; font-weight: 600; text-anchor: middle; }
+      .connection { fill: none; stroke: #0078d4; stroke-width: 2.5; }
+      .transit { fill: none; stroke: #333; stroke-width: 2; stroke-dasharray: 6 6; }
+      .vpn { fill: none; stroke: #ff7900; stroke-width: 3; }
+      .label { font-size: 16px; text-anchor: middle; }
+      .vpn-label { font-size: 17px; fill: #c45f00; text-anchor: middle; }
+      .callout { fill: #f3f2f1; stroke: #a19f9d; stroke-width: 1.5; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fff"/>
+  <text x="800" y="44" class="title">Azure Virtual WAN any-to-any topology</text>
+  <text x="800" y="72" class="subtitle">Six spoke VNets and two simulated branches connected across two Virtual WAN hubs</text>
+
+  <text x="400" y="112" class="region">Region 1</text>
+  <text x="1200" y="112" class="region">Region 2</text>
+
+  <!-- Connections are drawn first so they remain behind the resource shapes. -->
+  <path d="M155 290 350 430" class="connection"/>
+  <path d="M400 240V402" class="connection"/>
+  <path d="M645 290 450 430" class="connection"/>
+  <path d="M955 290 1150 430" class="connection"/>
+  <path d="M1200 240V402" class="connection"/>
+  <path d="M1445 290 1250 430" class="connection"/>
+  <path d="M460 472H1140" class="transit"/>
+  <path d="M400 548V665" class="vpn"/>
+  <path d="M1200 548V665" class="vpn"/>
+
+  <!-- Region 1 spokes. -->
+  <rect x="35" y="180" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="237" y="188" width="28" height="21"/>
+  <text x="155" y="220" class="name">Spoke 1</text>
+  <text x="155" y="247" class="detail">172.16.1.0/24</text>
+  <text x="155" y="279" class="vm">VM 172.16.1.4</text>
+
+  <rect x="280" y="120" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="482" y="128" width="28" height="21"/>
+  <text x="400" y="160" class="name">Spoke 2</text>
+  <text x="400" y="187" class="detail">172.16.2.0/24</text>
+  <text x="400" y="219" class="vm">VM 172.16.2.4</text>
+
+  <rect x="525" y="180" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="727" y="188" width="28" height="21"/>
+  <text x="645" y="220" class="name">Spoke 3</text>
+  <text x="645" y="247" class="detail">172.16.3.0/24</text>
+  <text x="645" y="279" class="vm">VM 172.16.3.4</text>
+
+  <!-- Region 2 spokes. -->
+  <rect x="835" y="180" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="1037" y="188" width="28" height="21"/>
+  <text x="955" y="220" class="name">Spoke 4</text>
+  <text x="955" y="247" class="detail">172.16.4.0/24</text>
+  <text x="955" y="279" class="vm">VM 172.16.4.4</text>
+
+  <rect x="1080" y="120" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="1282" y="128" width="28" height="21"/>
+  <text x="1200" y="160" class="name">Spoke 5</text>
+  <text x="1200" y="187" class="detail">172.16.5.0/24</text>
+  <text x="1200" y="219" class="vm">VM 172.16.5.4</text>
+
+  <rect x="1325" y="180" width="240" height="120" class="box spoke"/>
+  <use href="#vnet-icon" x="1527" y="188" width="28" height="21"/>
+  <text x="1445" y="220" class="name">Spoke 6</text>
+  <text x="1445" y="247" class="detail">172.16.6.0/24</text>
+  <text x="1445" y="279" class="vm">VM 172.16.6.4</text>
+
+  <!-- Virtual hubs and inter-hub transit. -->
+  <use href="#hub-icon" x="340" y="402" width="120" height="110"/>
+  <text x="400" y="538" class="name">Hub 1</text>
+  <text x="400" y="562" class="detail">192.168.1.0/24</text>
+
+  <use href="#hub-icon" x="1140" y="402" width="120" height="110"/>
+  <text x="1200" y="538" class="name">Hub 2</text>
+  <text x="1200" y="562" class="detail">192.168.2.0/24</text>
+
+  <rect x="650" y="432" width="300" height="80" rx="8" class="callout"/>
+  <text x="800" y="465" class="name">Virtual WAN inter-hub transit</text>
+  <text x="800" y="491" class="detail">Any-to-any connectivity</text>
+
+  <text x="255" y="375" class="label">VNet connections</text>
+  <text x="1345" y="375" class="label">VNet connections</text>
+
+  <!-- Simulated on-premises branches. -->
+  <text x="400" y="625" class="vpn-label">2x IPsec + BGP tunnels</text>
+  <text x="1200" y="625" class="vpn-label">2x IPsec + BGP tunnels</text>
+
+  <rect x="250" y="665" width="300" height="150" class="box branch"/>
+  <use href="#vm-icon" x="384" y="678" width="32" height="32"/>
+  <text x="400" y="735" class="name">VPN Branch 1</text>
+  <text x="400" y="763" class="detail">10.100.0.0/16</text>
+  <text x="400" y="795" class="vm">VM 10.100.0.4</text>
+
+  <rect x="1050" y="665" width="300" height="150" class="box branch"/>
+  <use href="#vm-icon" x="1184" y="678" width="32" height="32"/>
+  <text x="1200" y="735" class="name">VPN Branch 2</text>
+  <text x="1200" y="763" class="detail">10.200.0.0/16</text>
+  <text x="1200" y="795" class="vm">VM 10.200.0.4</text>
+
+</svg>
