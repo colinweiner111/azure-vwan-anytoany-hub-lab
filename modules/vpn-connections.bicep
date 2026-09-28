@@ -2,8 +2,7 @@ param location1 string
 param location2 string
 param virtualWanId string
 param branchGatewayIds array
-param branchGatewayPublicIps array
-param branchGatewayBgpIps array
+param branchVpnEndpoints array
 param branchAsns array
 param hubVpnGatewayPublicIps array
 param hubVpnGatewayBgpIps array
@@ -56,13 +55,14 @@ var tunnelDefinitions = [
   }
 ]
 
-resource vpnSites 'Microsoft.Network/vpnSites@2024-07-01' = [for (branch, index) in branchDefinitions: {
-  name: 'site-${branch.name}'
-  location: branch.location
+// Each active-active branch instance is represented by its own VPN site.
+resource vpnSites 'Microsoft.Network/vpnSites@2024-07-01' = [for endpoint in branchVpnEndpoints: {
+  name: 'site-${branchDefinitions[endpoint.branchIndex].name}-instance${endpoint.instanceIndex + 1}'
+  location: branchDefinitions[endpoint.branchIndex].location
   tags: tags
   properties: {
     addressSpace: {
-      addressPrefixes: [branch.addressPrefix]
+      addressPrefixes: [branchDefinitions[endpoint.branchIndex].addressPrefix]
     }
     deviceProperties: {
       deviceModel: 'Azure VPN Gateway'
@@ -77,10 +77,10 @@ resource vpnSites 'Microsoft.Network/vpnSites@2024-07-01' = [for (branch, index)
         name: 'link1'
         properties: {
           bgpProperties: {
-            asn: branchAsns[index]
-            bgpPeeringAddress: branchGatewayBgpIps[index]
+            asn: branchAsns[endpoint.branchIndex]
+            bgpPeeringAddress: endpoint.bgpIp
           }
-          ipAddress: branchGatewayPublicIps[index]
+          ipAddress: endpoint.publicIp
           linkProperties: {
             linkProviderName: 'Azure'
             linkSpeedInMbps: 50
@@ -95,9 +95,11 @@ resource hubVpnGateways 'Microsoft.Network/vpnGateways@2024-07-01' existing = [f
   name: gatewayName
 }]
 
-resource hubVpnConnections 'Microsoft.Network/vpnGateways/vpnConnections@2024-07-01' = [for (branch, index) in branchDefinitions: {
-  parent: hubVpnGateways[index]
-  name: 'site-${branch.name}-conn'
+// Avoid overlapping connection writes against the same hub VPN gateway.
+@batchSize(1)
+resource hubVpnConnections 'Microsoft.Network/vpnGateways/vpnConnections@2024-07-01' = [for (endpoint, index) in branchVpnEndpoints: {
+  parent: hubVpnGateways[endpoint.branchIndex]
+  name: 'site-${branchDefinitions[endpoint.branchIndex].name}-instance${endpoint.instanceIndex + 1}-conn'
   properties: {
     enableInternetSecurity: true
     remoteVpnSite: {
@@ -143,6 +145,7 @@ resource branchConnections 'Microsoft.Network/connections@2024-05-01' = [for (tu
   tags: tags
   properties: {
     connectionType: 'IPsec'
+    connectionProtocol: 'IKEv2'
     enableBgp: true
     sharedKey: vpnSharedKey
     #disable-next-line BCP035
@@ -156,5 +159,5 @@ resource branchConnections 'Microsoft.Network/connections@2024-05-01' = [for (tu
   }
 }]
 
-output hubVpnConnectionIds array = [for index in range(0, length(branchDefinitions)): hubVpnConnections[index].id]
+output hubVpnConnectionIds array = [for index in range(0, length(branchVpnEndpoints)): hubVpnConnections[index].id]
 output branchVpnConnectionIds array = [for index in range(0, length(tunnelDefinitions)): branchConnections[index].id]

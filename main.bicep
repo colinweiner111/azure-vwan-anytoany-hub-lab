@@ -17,10 +17,9 @@ param adminUsername string = 'azureuser'
 
 @description('Administrator password used by all lab VMs.')
 @secure()
+@minLength(12)
+@maxLength(72)
 param adminPassword string
-
-@description('CIDR allowed to SSH to the lab VMs.')
-param sshSourceAddressPrefix string
 
 @description('VM SKU used by all lab VMs.')
 param vmSize string = 'Standard_D2ls_v7'
@@ -35,6 +34,9 @@ param tags object = {
   environment: 'demo'
 }
 
+var hub1Name = 'hub1'
+var bastionVnetName = 'bastion-vnet'
+
 resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   name: resourceGroupName
   location: location1
@@ -48,7 +50,6 @@ module network 'modules/network.bicep' = {
     location1: location1
     location2: location2
     virtualWanName: virtualWanName
-    sshSourceAddressPrefix: sshSourceAddressPrefix
     tags: tags
   }
 }
@@ -74,8 +75,7 @@ module vpnConnections 'modules/vpn-connections.bicep' = {
     location2: location2
     virtualWanId: network.outputs.virtualWanId
     branchGatewayIds: network.outputs.branchGatewayIds
-    branchGatewayPublicIps: network.outputs.branchGatewayPublicIps
-    branchGatewayBgpIps: network.outputs.branchGatewayBgpIps
+    branchVpnEndpoints: network.outputs.branchVpnEndpoints
     branchAsns: network.outputs.branchAsns
     hubVpnGatewayPublicIps: network.outputs.hubVpnGatewayPublicIps
     hubVpnGatewayBgpIps: network.outputs.hubVpnGatewayBgpIps
@@ -84,9 +84,25 @@ module vpnConnections 'modules/vpn-connections.bicep' = {
   }
 }
 
+module bastion 'modules/bastion.bicep' = {
+  scope: resourceGroup
+  name: 'bastion-${uniqueString(deployment().name)}'
+  params: {
+    location: location1
+    hubName: hub1Name
+    bastionVnetName: bastionVnetName
+    bastionSubnetPrefix: network.outputs.bastionSubnetPrefix
+    tags: tags
+  }
+  dependsOn: [
+    vpnConnections
+  ]
+}
+
 output resourceGroupName string = resourceGroup.name
 output virtualWanId string = network.outputs.virtualWanId
 output virtualHubIds array = network.outputs.virtualHubIds
+output bastionName string = bastion.outputs.bastionName
 output branchGatewayIds array = network.outputs.branchGatewayIds
 output hubVpnGatewayIds array = network.outputs.hubVpnGatewayIds
 output virtualMachineNames array = virtualMachines.outputs.virtualMachineNames

@@ -1,8 +1,11 @@
 param location1 string
 param location2 string
 param virtualWanName string
-param sshSourceAddressPrefix string
 param tags object
+
+var bastionVnetName = 'bastion-vnet'
+var bastionVnetPrefix = '10.250.0.0/24'
+var bastionSubnetPrefix = '10.250.0.0/26'
 
 var hubDefinitions = [
   {
@@ -99,6 +102,12 @@ var branchAsns = [
   65509
 ]
 
+var branchEndpointDefinitions = [for index in range(0, length(branchDefinitions) * 2): {
+  branchIndex: index / 2
+  instanceIndex: index % 2
+  ipConfigurationName: index % 2 == 0 ? 'default' : 'secondary'
+}]
+
 resource networkSecurityGroups 'Microsoft.Network/networkSecurityGroups@2024-05-01' = [for hub in hubDefinitions: {
   name: 'default-nsg-${hub.name}'
   location: hub.location
@@ -106,13 +115,13 @@ resource networkSecurityGroups 'Microsoft.Network/networkSecurityGroups@2024-05-
   properties: {
     securityRules: [
       {
-        name: 'allow-ssh'
+        name: 'allow-bastion-ssh'
         properties: {
           access: 'Allow'
           direction: 'Inbound'
           priority: 100
           protocol: 'Tcp'
-          sourceAddressPrefix: sshSourceAddressPrefix
+          sourceAddressPrefix: bastionSubnetPrefix
           sourcePortRange: '*'
           destinationAddressPrefix: '*'
           destinationPortRange: '22'
@@ -151,6 +160,19 @@ resource virtualNetworks 'Microsoft.Network/virtualNetworks@2024-05-01' = [for d
   }
 }]
 
+resource bastionVnet 'Microsoft.Network/virtualNetworks@2024-05-01' = {
+  name: bastionVnetName
+  location: location1
+  tags: tags
+  properties: {
+    addressSpace: {
+      addressPrefixes: [
+        bastionVnetPrefix
+      ]
+    }
+  }
+}
+
 resource virtualWan 'Microsoft.Network/virtualWans@2024-07-01' = {
   name: virtualWanName
   location: location1
@@ -185,9 +207,11 @@ resource spokeConnections 'Microsoft.Network/virtualHubs/hubVirtualNetworkConnec
   }
 }]
 
-resource branchGatewayPublicIps 'Microsoft.Network/publicIPAddresses@2024-05-01' = [for branch in branchDefinitions: {
-  name: '${branch.name}-vpngw-pip'
-  location: branch.location
+resource branchGatewayPublicIps 'Microsoft.Network/publicIPAddresses@2024-05-01' = [for endpoint in branchEndpointDefinitions: {
+  name: endpoint.instanceIndex == 0
+    ? '${branchDefinitions[endpoint.branchIndex].name}-vpngw-pip'
+    : '${branchDefinitions[endpoint.branchIndex].name}-vpngw-pip2'
+  location: branchDefinitions[endpoint.branchIndex].location
   zones: [
     '1'
     '2'
@@ -207,7 +231,7 @@ resource branchGateways 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = 
   location: branch.location
   tags: tags
   properties: {
-    activeActive: false
+    activeActive: true
     enableBgp: true
     gatewayType: 'Vpn'
     vpnType: 'RouteBased'
@@ -216,20 +240,18 @@ resource branchGateways 'Microsoft.Network/virtualNetworkGateways@2024-05-01' = 
       name: 'VpnGw1AZ'
       tier: 'VpnGw1AZ'
     }
-    ipConfigurations: [
-      {
-        name: 'default'
-        properties: {
-          privateIPAllocationMethod: 'Dynamic'
-          publicIPAddress: {
-            id: branchGatewayPublicIps[index].id
-          }
-          subnet: {
-            id: '${virtualNetworks[index].id}/subnets/GatewaySubnet'
-          }
+    ipConfigurations: [for instanceIndex in range(0, 2): {
+      name: branchEndpointDefinitions[index * 2 + instanceIndex].ipConfigurationName
+      properties: {
+        privateIPAllocationMethod: 'Dynamic'
+        publicIPAddress: {
+          id: branchGatewayPublicIps[index * 2 + instanceIndex].id
+        }
+        subnet: {
+          id: '${virtualNetworks[index].id}/subnets/GatewaySubnet'
         }
       }
-    ]
+    }]
     bgpSettings: {
       asn: branchAsns[index]
       peerWeight: 0
@@ -255,6 +277,7 @@ resource hubVpnGateways 'Microsoft.Network/vpnGateways@2024-07-01' = [for (hub, 
 
 output virtualWanId string = virtualWan.id
 output virtualHubIds array = [for index in range(0, length(hubDefinitions)): virtualHubs[index].id]
+output bastionSubnetPrefix string = bastionSubnetPrefix
 output virtualNetworks array = [for (definition, index) in virtualNetworkDefinitions: {
   name: definition.name
   id: virtualNetworks[index].id
@@ -264,8 +287,16 @@ output virtualNetworks array = [for (definition, index) in virtualNetworkDefinit
 }]
 output networkSecurityGroupIds array = [for index in range(0, length(hubDefinitions)): networkSecurityGroups[index].id]
 output branchGatewayIds array = [for index in range(0, length(branchDefinitions)): branchGateways[index].id]
-output branchGatewayPublicIps array = [for index in range(0, length(branchDefinitions)): branchGatewayPublicIps[index].properties.ipAddress]
-output branchGatewayBgpIps array = [for index in range(0, length(branchDefinitions)): branchGateways[index].properties.bgpSettings.bgpPeeringAddresses[0].defaultBgpIpAddresses[0]]
+// Match the BGP address by IP configuration, not the service's returned array order.
+output branchVpnEndpoints array = [for (endpoint, index) in branchEndpointDefinitions: {
+  branchIndex: endpoint.branchIndex
+  instanceIndex: endpoint.instanceIndex
+  publicIp: branchGatewayPublicIps[index].properties.ipAddress
+  bgpIp: filter(
+    branchGateways[endpoint.branchIndex].properties.bgpSettings.bgpPeeringAddresses,
+    peer => endsWith(toLower(peer.ipconfigurationId), '/ipconfigurations/${endpoint.ipConfigurationName}')
+  )[0].defaultBgpIpAddresses[0]
+}]
 output branchAsns array = branchAsns
 output hubVpnGatewayIds array = [for index in range(0, length(hubDefinitions)): hubVpnGateways[index].id]
 output hubVpnGatewayPublicIps array = [
